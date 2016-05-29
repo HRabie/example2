@@ -1,0 +1,106 @@
+---
+title: "Practical Machine Learning Final Course Project"
+author: "Hassan Rabie"
+date: "May 27, 2016"
+output: 
+  html_document: 
+    fig_caption: yes
+    keep_md: yes
+    toc: yes
+---
+
+#1-Introduction
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self-movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. 
+
+In this project, our goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways, to predict the manner in which people did their exercise. This is the "classe" variable in the training set. We may use any of the other variables to predict with. we should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases.
+
+
+#2-Data
+
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+#3-Loading Data
+After downloading data, Copy the data to the default directory of R
+```{r}
+BasicTraining <- read.csv("pml-training.csv")
+TestingFinal <- read.csv("pml-testing.csv")
+library(caret)
+library(rattle)
+library(rpart.plot)
+library(AppliedPredictiveModeling)
+```
+
+#4-Data Cleaning 
+After downloading data, and Copying the data into the default directory of R
+```{r}
+#Removing na columns
+BasicTraining=BasicTraining[ , !apply(BasicTraining, 2 , function(x) sum(is.na(x))>0 ) ]
+#Removing Empty columns
+BasicTraining= BasicTraining[ , !apply(BasicTraining, 2 , function(x) sum(x=='')>0 ) ]
+#Removing unnecessary columns
+BasicTraining<- BasicTraining[,7:length(colnames(BasicTraining))]
+#checking covariates that have virtually no variablility
+NZV <- nearZeroVar(BasicTraining, saveMetrics=TRUE)
+#No variable will be removed since all of the near zero variance variables are FALSE
+nrow(BasicTraining)
+#Dividing the BasicTraining into two parts
+
+set.seed(1000)
+inTraining <- createDataPartition(y=BasicTraining$classe, p=0.6, list=FALSE)
+Training <-BasicTraining[inTraining,]
+Testing<-BasicTraining[-inTraining,]
+```
+
+#5-Predicting with trees (rpart method)
+
+In this section, we will train the dataset Training without using cross validation and get the out-of-sample error of Testing dataset. Then we will apply the model on the Testing final dataset and reporting the results
+
+```{r}
+set.seed(1000)
+fitmodel<-train(classe ~ . , method="rpart", data=Training)
+print(fitmodel$finalModel)
+fancyRpartPlot(fitmodel$finalModel)
+Prediction <- predict(fitmodel, newdata=Testing)
+print(confusionMatrix(Prediction, Testing$classe))
+Predict20problem1<- predict(fitmodel, newdata=TestingFinal)
+Predict20problem1
+```
+
+as the confusion matrix shows that the accuracy of the model is 0.55
+
+In this section, we will train the dataset Training using cross validation and get the out-of-sample error of Testing dataset.
+
+```{r}
+set.seed(1000)
+fitmodel <- train(classe ~ .,  preProcess=c("center", "scale"), trControl=trainControl(method = "cv", number = 4), data = Training, method="rpart")
+print(fitmodel$finalModel)
+fancyRpartPlot(fitmodel$finalModel)
+Prediction <- predict(fitmodel, newdata=Testing)
+print(confusionMatrix(Prediction, Testing$classe))
+Predict20problem2<- predict(fitmodel, newdata=TestingFinal)
+Predict20problem2
+```
+as the confusion matrix shows that the accuracy of the model is .55 
+
+#6-Using Random Forest 
+In this section, we will train the dataset Training by using Random forest with cross validtion as mentioned in the video lecture and get the out-of-sample error of Testing dataset.
+```{r}
+fitControl <- trainControl(method = "cv", number = 4)
+fito <- train(classe ~ ., method="rf",data=Training,trControl = fitControl)
+print(fito)
+Predictions <- predict(fito, newdata=Testing)
+print(confusionMatrix(Predictions, Testing$classe))
+Predict20problem3<- predict(fitmodel, newdata=TestingFinal)
+Predict20problem3
+```
+as the confusion matrix shows that the accuracy of the model is .99 
+
+#7-Conclusion 
+In the above sections we compare between three different methods to predict the 20 problems the best model was the Random forest algorithm with accuracy  therefore we used it for solve the assignment.
